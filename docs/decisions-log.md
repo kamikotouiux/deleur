@@ -2,6 +2,12 @@
 
 Newest first. One entry per decision: date, what was decided, who decided, why / source.
 
+## 2026-11-13 — Catalogue v2 sketched (proposal, not approved)
+- Figma panel 09: hero + selected work in two views, List (index) and Grid (covers), with a List/Grid toggle.
+- Taken from wave-2 refs: floating "Talk about your project" card (Haptic), bracket labels (Human Made), "Updated <month year>" line (Typesafe).
+- Claude's recommendation: Grid by default, List as the alternative view. Needs Daniel/Val decision.
+- Temporary fonts: Host Grotesk + Geist Mono + Source Serif 4. Tinos, DM Mono, Libre Caslon and Martian Mono lack the ↗ glyph.
+
 ## 2026-11-13 — Moodboards: Catalogue direction leads (not final)
 - Daniel: direction 02 "Catalogue / numbered index" is the strongest so far. Not final until Val agrees.
 - Serif in 01 rejected as weak; any serif must not look AI-generated (avoid Instrument Serif, Editorial New, Fraunces, Playfair, Cormorant, DM Serif).
