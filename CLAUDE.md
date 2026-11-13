@@ -17,6 +17,7 @@
 - research-decisions.md — обоснование структуры и тона, референсы студий.
 - source/daniel-landing-brief.pdf — оригинал landing-brief (landing-brief.md — его дословная расшифровка).
 - decisions-log.md — журнал решений.
+- Мудборды (Figma): https://www.figma.com/design/oy9ZPeAaL8VOreTBg5kzWd — 01 Галерея, 02 Каталог, 03 Кинозал, 04 чего не хватает, 05 вторая волна рефов. Направление не выбрано.
 - В brand-naming-brief.md студия называется «Studio Z» и есть шорт-лист имён — это устарело, имя выбрано: Deléur.
 
 ## Зафиксировано
