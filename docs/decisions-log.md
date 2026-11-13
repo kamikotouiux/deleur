@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what was decided, who decided, why / source.
 
+## 2026-11-13 — Free fonts only; classic Helvetica-like grotesk
+- Daniel: only free fonts. Paid options removed from the moodboard.
+- Host Grotesk rejected (too narrow). Wanted: classic Helvetica-like grotesk.
+- Shortlist (Figma panel 07, rendered from real font files): Inter Tight / Inter Display, Instrument Sans, Schibsted Grotesk, Geist, Zalando Sans; Stack Sans for comparison. Mono: Geist Mono, JetBrains Mono, IBM Plex Mono.
+- Claude's recommendation (not decided): Inter Tight + Inter + Geist Mono. Arimo, Google Sans Flex, Public Sans, Switzer lack the ↗ glyph.
+- Hero concepts H1 wordmark / H2 full-bleed / H3 catalogue spread (Figma panel 08) with Daniel's real cases. Not decided.
+- Wireframe for discussion with Vova: Figma page "Wireframe — для обсуждения".
+
 ## 2026-11-13 — Catalogue v2 sketched (proposal, not approved)
 - Figma panel 09: hero + selected work in two views, List (index) and Grid (covers), with a List/Grid toggle.
 - Taken from wave-2 refs: floating "Talk about your project" card (Haptic), bracket labels (Human Made), "Updated <month year>" line (Typesafe).
