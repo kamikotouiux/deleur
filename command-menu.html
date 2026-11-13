@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4f4f5;
+  --panel: #ffffff;
+  --text: #18181b;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --border: #e4e4e7;
+  --hover: #f4f4f5;
+  --active: #f0f0f2;
+  --kbd-bg: #fafafa;
+  --kbd-border: #e4e4e7;
+  --accent: #6366f1;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px -8px rgba(0,0,0,.14), 0 32px 64px -24px rgba(0,0,0,.12);
+  --toast-bg: #18181b;
+  --toast-text: #fafafa;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #09090b; --panel: #141416; --text: #f4f4f5; --muted: #a1a1aa; --faint: #71717a;
+    --border: #27272a; --hover: #1c1c1f; --active: #232327; --kbd-bg: #1c1c1f; --kbd-border: #303035;
+    --shadow: 0 0 0 1px rgba(255,255,255,.02), 0 24px 64px -16px rgba(0,0,0,.7);
+    --toast-bg: #f4f4f5; --toast-text: #18181b;
+  }
+}
+:root[data-theme="dark"], .dark {
+  --bg: #09090b; --panel: #141416; --text: #f4f4f5; --muted: #a1a1aa; --faint: #71717a;
+  --border: #27272a; --hover: #1c1c1f; --active: #232327; --kbd-bg: #1c1c1f; --kbd-border: #303035;
+  --shadow: 0 0 0 1px rgba(255,255,255,.02), 0 24px 64px -16px rgba(0,0,0,.7);
+  --toast-bg: #f4f4f5; --toast-text: #18181b;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10vh 16px 48px;
+  transition: background .2s;
+}
+.topbar { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; }
+.btn {
+  font: inherit; font-size: 13px; color: var(--text); background: var(--panel);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer;
+}
+.btn:hover { background: var(--hover); }
+
+/* ---------- Command menu ---------- */
+.cm {
+  width: 100%; max-width: 600px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: cm-in .22s cubic-bezier(.2,.9,.3,1.2);
+}
+.cm[hidden] { display: none; }
+@keyframes cm-in { from { opacity: 0; transform: scale(.97) translateY(-6px); } }
+.cm.closing { animation: cm-out .14s ease-in forwards; }
+@keyframes cm-out { to { opacity: 0; transform: scale(.97) translateY(-4px); } }
+
+.cm-search {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; height: 52px;
+  border-bottom: 1px solid var(--border);
+}
+.cm-search svg { flex: none; color: var(--faint); }
+.cm-input {
+  flex: 1; min-width: 0; height: 100%;
+  border: 0; outline: 0; background: transparent;
+  font: inherit; font-size: 15px; color: var(--text);
+}
+.cm-input::placeholder { color: var(--faint); }
+
+.cm-list {
+  position: relative;
+  max-height: min(400px, 60vh);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 6px;
+  scroll-padding: 34px 0 6px;
+}
+.cm-highlight {
+  position: absolute; left: 6px; right: 6px; top: 0; height: 40px;
+  background: var(--active); border-radius: 8px;
+  pointer-events: none;
+  transition: transform .16s cubic-bezier(.3,.7,.2,1), height .16s, opacity .12s;
+  opacity: 0;
+}
+.cm-group + .cm-group { margin-top: 4px; }
+.cm-group-label {
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  padding: 8px 10px 4px;
+}
+.cm-item {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 10px;
+  border-radius: 8px; cursor: pointer; user-select: none;
+}
+.cm-item .ico {
+  flex: none; width: 22px; height: 22px; display: grid; place-items: center;
+  color: var(--muted);
+}
+.cm-item .logo {
+  flex: none; width: 22px; height: 22px; border-radius: 6px;
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 600; color: #fff;
+}
+.cm-item .label { flex: none; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.cm-item .hint { flex: 1; min-width: 0; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cm-item .keys { margin-left: auto; display: flex; gap: 4px; flex: none; }
+.cm-item mark { background: none; color: var(--accent); font-weight: 600; }
+kbd {
+  font: 500 11px/1 Inter, system-ui, sans-serif; color: var(--muted);
+  min-width: 20px; height: 20px; padding: 0 5px;
+  display: inline-grid; place-items: center;
+  background: var(--kbd-bg); border: 1px solid var(--kbd-border); border-bottom-width: 2px;
+  border-radius: 5px;
+}
+.cm-empty { padding: 28px 12px; text-align: center; color: var(--muted); }
+
+.cm-footer {
+  display: flex; align-items: center; gap: 14px;
+  padding: 8px 14px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted);
+}
+.cm-footer span { display: inline-flex; align-items: center; gap: 6px; }
+.cm-footer .right { margin-left: auto; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.reopen { margin-top: 24px; color: var(--muted); font-size: 13px; text-align: center; }
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 20px);
+  background: var(--toast-bg); color: var(--toast-text);
+  padding: 9px 14px; border-radius: 10px; font-size: 13px;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+  max-width: calc(100% - 32px);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 520px) {
+  .cm-item .keys, .cm-item .hint, .cm-footer .hide-sm { display: none; }
+  .cm-item .label { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm, .cm.closing, .cm-highlight { animation: none; transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="btn" id="theme-btn" type="button">Тема</button>
+</div>
+
+<div class="cm" id="cm">
+  <div class="cm-search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input class="cm-input" id="cm-input" type="text" autocomplete="off" spellcheck="false"
+      role="combobox" aria-expanded="true" aria-controls="cm-list" aria-autocomplete="list"
+      placeholder="Type a command or search…" autofocus>
+    <kbd aria-hidden="true">Esc</kbd>
+  </div>
+  <div class="cm-list" id="cm-list" role="listbox" aria-label="Команды">
+    <div class="cm-highlight" id="cm-hl"></div>
+  </div>
+  <div class="cm-footer" aria-hidden="true">
+    <span><kbd>↑</kbd><kbd>↓</kbd> навигация</span>
+    <span><kbd>↵</kbd> запустить</span>
+    <span class="hide-sm"><kbd>Tab</kbd> секции</span>
+    <span class="right hide-sm"><kbd id="mod-key">⌘</kbd><kbd>K</kbd></span>
+  </div>
+</div>
+<div class="sr-only" aria-live="polite" id="cm-live"></div>
+
+<p class="reopen" id="reopen" hidden>Меню закрыто. Нажмите <kbd class="mod">⌘</kbd> <kbd>K</kbd>, чтобы открыть снова.</p>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const MOD = isMac ? '⌘' : 'Ctrl';
+  document.querySelectorAll('#mod-key, .mod').forEach(el => el.textContent = MOD);
+
+  const svg = p => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  const I = {
+    link: svg('<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'),
+    mail: svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
+    user: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+    plus: svg('<path d="M12 5v14M5 12h14"/>'),
+    gear: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+    moon: svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+    help: svg('<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>'),
+    home: svg('<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'),
+    inbox: svg('<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>'),
+    folder: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
+    chart: svg('<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>'),
+    spark: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>'),
+  };
+  const logo = (txt, bg) => ({ txt, bg });
+
+  const groups = [
+    { id: 'suggestions', label: 'Suggestions', commands: [
+      { id: 'issue',   label: 'Create issue',       hint: 'Tracker',  logo: logo('Tr', '#5e6ad2'), keywords: ['ticket','bug','task'] },
+      { id: 'message', label: 'Send message',       hint: 'Chat',     logo: logo('Ch', '#e01e5a'), keywords: ['slack','dm','post'] },
+      { id: 'page',    label: 'New page',           hint: 'Wiki',     logo: logo('Wk', '#2f2f2f'), keywords: ['doc','note'] },
+      { id: 'event',   label: 'Schedule meeting',   hint: 'Calendar', logo: logo('Ca', '#1a73e8'), keywords: ['call','event'] },
+      { id: 'pr',      label: 'Open pull request',  hint: 'Code',     logo: logo('Gh', '#24292f'), keywords: ['github','merge','review'] },
+    ]},
+    { id: 'share', label: 'Share', commands: [
+      { id: 'copy-link', label: 'Copy link',       icon: I.link, keys: [MOD, 'L'] },
+      { id: 'email',     label: 'Send by email',   icon: I.mail },
+      { id: 'invite',    label: 'Invite teammate', icon: I.user, keywords: ['add','member'] },
+    ]},
+    { id: 'general', label: 'General', commands: [
+      { id: 'new',      label: 'New file',          icon: I.plus, keys: [MOD, 'N'] },
+      { id: 'theme',    label: 'Toggle theme',      icon: I.moon, hint: 'Light / Dark', keywords: ['dark','light','mode'] },
+      { id: 'settings', label: 'Settings',          icon: I.gear, keys: [MOD, ','], keywords: ['preferences'] },
+      { id: 'help',     label: 'Help & feedback',   icon: I.help, keywords: ['support'] },
+    ]},
+    { id: 'goto', label: 'Go to', commands: [
+      { id: 'go-home',      label: 'Home',      icon: I.home,   keys: ['G', 'H'] },
+      { id: 'go-inbox',     label: 'Inbox',     icon: I.inbox,  keys: ['G', 'I'] },
+      { id: 'go-projects',  label: 'Projects',  icon: I.folder, keys: ['G', 'P'] },
+      { id: 'go-analytics', label: 'Analytics', icon: I.chart,  keys: ['G', 'A'] },
+    ]},
+  ];
+  groups[0].commands.forEach((c, i) => c.keys = [MOD, String(i + 1)]);
+
+  const root = document.getElementById('cm');
+  const input = document.getElementById('cm-input');
+  const list = document.getElementById('cm-list');
+  const hl = document.getElementById('cm-hl');
+  const live = document.getElementById('cm-live');
+  const toastEl = document.getElementById('toast');
+  const reopen = document.getElementById('reopen');
+
+  let items = [];       // flat rendered items: {el, cmd, groupIdx}
+  let active = 0;
+  let toastTimer;
+
+  const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // fuzzy: all query chars in order; score favors prefix / contiguous matches
+  function match(text, q) {
+    if (!q) return { score: 1, idx: [] };
+    const t = text.toLowerCase(); let qi = 0, score = 0, last = -2; const idx = [];
+    for (let i = 0; i < t.length && qi < q.length; i++) {
+      if (t[i] === q[qi]) {
+        score += (i === last + 1 ? 3 : 1) + (i === 0 || t[i-1] === ' ' ? 2 : 0);
+        idx.push(i); last = i; qi++;
+      }
+    }
+    return qi === q.length ? { score, idx } : null;
+  }
+  function highlight(text, idx) {
+    if (!idx.length) return esc(text);
+    const set = new Set(idx);
+    return [...text].map((ch, i) => set.has(i) ? `<mark>${esc(ch)}</mark>` : esc(ch)).join('');
+  }
+
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    list.querySelectorAll('.cm-group, .cm-empty').forEach(n => n.remove());
+    items = [];
+    const view = [];
+
+    groups.forEach((g, gi) => {
+      let cmds = g.commands.map(c => {
+        const m = match(c.label, q);
+        if (m) return { c, m };
+        const kw = q && (c.keywords || []).concat(c.hint || []).some(k => match(k, q));
+        return kw ? { c, m: { score: 0.5, idx: [] } } : null;
+      }).filter(Boolean);
+      if (q) cmds.sort((a, b) => b.m.score - a.m.score);
+      if (cmds.length) view.push({ g, gi, cmds });
+    });
+
+    if (q) {
+      view.push({ g: { id: 'assistant', label: 'Assistant' }, gi: -1, cmds: [{
+        c: { id: 'ask', label: `Ask assistant: “${input.value.trim()}”`, icon: I.spark, keys: ['↵'] }, m: { idx: [] }
+      }]});
+    }
+
+    view.forEach(({ g, gi, cmds }) => {
+      const sec = document.createElement('div');
+      sec.className = 'cm-group'; sec.setAttribute('role', 'group');
+      const lid = `cm-g-${g.id}`;
+      sec.setAttribute('aria-labelledby', lid);
+      sec.innerHTML = `<div class="cm-group-label" id="${lid}">${esc(g.label)}</div>`;
+      cmds.forEach(({ c, m }) => {
+        const el = document.createElement('div');
+        el.className = 'cm-item'; el.setAttribute('role', 'option');
+        el.id = `cm-opt-${c.id}`;
+        const lead = c.logo
+          ? `<span class="logo" style="background:${c.logo.bg}" aria-hidden="true">${c.logo.txt}</span>`
+          : `<span class="ico" aria-hidden="true">${c.icon || ''}</span>`;
+        el.innerHTML = `${lead}<span class="label">${c.id === 'ask' ? esc(c.label) : highlight(c.label, m.idx)}</span>`
+          + (c.hint ? `<span class="hint">${esc(c.hint)}</span>` : '')
+          + (c.keys ? `<span class="keys" aria-hidden="true">${c.keys.map(k => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : '');
+        const i = items.length;
+        el.addEventListener('mousemove', () => { if (active !== i) setActive(i, false); });
+        el.addEventListener('click', () => { setActive(i, false); run(); });
+        sec.appendChild(el);
+        items.push({ el, cmd: c, groupEl: sec, score: m.score || 0 });
+      });
+      list.appendChild(sec);
+    });
+
+    if (!items.length) {
+      const e = document.createElement('div');
+      e.className = 'cm-empty'; e.textContent = 'Ничего не найдено';
+      list.appendChild(e);
+    }
+    let best = 0;
+    if (q) items.forEach((it, i) => { if (it.score > items[best].score) best = i; });
+    setActive(best, true);
+  }
+
+  function setActive(i, scroll = true) {
+    items.forEach(it => it.el.removeAttribute('aria-selected'));
+    if (!items.length) { hl.style.opacity = 0; input.removeAttribute('aria-activedescendant'); return; }
+    active = (i + items.length) % items.length;
+    const el = items[active].el;
+    el.setAttribute('aria-selected', 'true');
+    input.setAttribute('aria-activedescendant', el.id);
+    hl.style.opacity = 1;
+    hl.style.transform = `translateY(${el.offsetTop}px)`;
+    hl.style.height = el.offsetHeight + 'px';
+    if (scroll) el.scrollIntoView({ block: 'nearest' });
+  }
+
+  function jumpSection(dir) {
+    if (!items.length) return;
+    const sections = [...new Set(items.map(it => it.groupEl))];
+    const cur = sections.indexOf(items[active].groupEl);
+    const next = sections[(cur + dir + sections.length) % sections.length];
+    setActive(items.findIndex(it => it.groupEl === next));
+  }
+
+  function run(cmd = items[active] && items[active].cmd) {
+    if (!cmd) return;
+    const q = input.value.trim();
+    onRun(cmd.id, cmd.id === 'ask' ? q : undefined, cmd);
+  }
+
+  // Demo handler — replace with your own logic
+  function onRun(id, query, cmd) {
+    if (id === 'theme') toggleTheme();
+    const msg = id === 'ask' ? `Спрашиваем ассистента: «${query}»` : `Запущено: ${cmd.label}`;
+    live.textContent = msg;
+    toast(msg);
+  }
+
+  function toast(msg) {
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+  }
+
+  function close() {
+    root.classList.add('closing');
+    root.addEventListener('animationend', () => {
+      root.hidden = true; root.classList.remove('closing'); reopen.hidden = false;
+    }, { once: true });
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) root.dispatchEvent(new Event('animationend'));
+  }
+  function open() {
+    reopen.hidden = true; root.hidden = false;
+    input.focus(); input.select();
+    requestAnimationFrame(() => setActive(active, true));
+  }
+
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', e => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); run(); }
+    else if (e.key === 'Tab') { e.preventDefault(); jumpSection(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'Escape') {
+      e.preventDefault();
+      if (input.value) { input.value = ''; render(); } else close();
+    }
+    else if (mod && /^[1-5]$/.test(e.key)) {
+      e.preventDefault();
+      run(groups[0].commands[+e.key - 1]);
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      root.hidden ? open() : (input.focus(), input.select());
+    }
+  });
+
+  // Theme toggle
+  function toggleTheme() {
+    const r = document.documentElement;
+    const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    r.dataset.theme = dark ? 'light' : 'dark';
+  }
+  document.getElementById('theme-btn').addEventListener('click', () => { toggleTheme(); input.focus(); });
+
+  window.addEventListener('resize', () => setActive(active, false));
+  render();
+  input.focus();
+})();
+</script>
+</body>
+</html>
