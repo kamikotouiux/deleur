@@ -90,3 +90,6 @@
 - [ ] Домен: deleur.com занят; свободны deleur.studio / .agency / .design / .co / .io, deleurstudio.com (проверено 13.11.2026, не куплен)
 - [ ] Произношение Deléur для англоязычных клиентов — проверить тестом из brand-naming-brief (п. «Practical name test»)
 - [ ] Email студии, портреты
+
+## Факты
+- Города студии: Братислава и Варшава (оба CET).

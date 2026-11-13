@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what was decided, who decided, why / source.
 
+## 2026-11-13 — Grid, alignment and type system (Daniel's direction)
+- Studio cities: Bratislava and Warsaw (both CET). Show one time line, not two clocks.
+- Grid: 12 columns, page margin 12 px, gutter 12 px (column 107 px at 1440). 24 px was too loose for this image-led format.
+- Alignment: text blocks sit on three anchors — column 1, column 7 (right half) and column 10 (middle of the right half), as on MW.S. Only the big wordmark breaks it.
+- Type: one family, one weight (Medium), two text sizes (16 body, 12 meta) plus headline and wordmark; one text colour, no greys — after zajno.com (measured: one family/weight, near-single colour; main size there is fluid, ~22.5 px at 1440).
+- Case media: whole screenshots, no cropping; baked rounded corners removed; square corners; one neutral mat colour #E8E7E3 for all.
+- Open: card ratio for web cases (4:5 vs 16:10 vs 4:3).
+
 ## 2026-11-13 — Free fonts only; classic Helvetica-like grotesk
 - Daniel: only free fonts. Paid options removed from the moodboard.
 - Host Grotesk rejected (too narrow). Wanted: classic Helvetica-like grotesk.
