@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what was decided, who decided, why / source.
 
+## 2026-11-13 — Type and grid re-based on measured refs (supersedes the 12/12 grid entry)
+- Measured: Charmer Blink — body 16/20, nav 16 (same as body), mono caps 11.5, display 40/44, margin 16, text anchors at 720 and 1096 (half and ¾). zajno — margin 16, column pitch 237, gutter ≈14, one weight, body fluid ~22.5 at 1440. ProdCo — one size 13.
+- Grid: 12 columns, margin 16, gutter 14 (column 104.5 at 1440). Anchors: columns 1, 7, 10.
+- Type: Inter Medium only; 16/20 for everything incl. navigation; 12/16 only for numbers/notes; 40/44 for headings; wordmark. One size per line (index rows fully 16).
+- Hero concepts rebuilt (Figma panel "08 Hero concepts v3"); wireframe rebuilt on the same system. Still proposals.
+- a1-gallery MCP was not authorised in this session, so values come from direct measurement of the three refs.
+
 ## 2026-11-13 — Grid, alignment and type system (Daniel's direction)
 - Studio cities: Bratislava and Warsaw (both CET). Show one time line, not two clocks.
 - Grid: 12 columns, page margin 12 px, gutter 12 px (column 107 px at 1440). 24 px was too loose for this image-led format.
