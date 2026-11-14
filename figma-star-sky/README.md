@@ -1,4 +1,4 @@
-# Starry Sky Plugin — локальный плагин для Figma
+# Sky Stars — локальный плагин для Figma
 
 Генерирует звёздное небо из Drop shadow (приём, как у Wiza): каждая звезда — тень почти невидимой точки (fill 0.2%).
 Figma позволяет максимум 8 Drop shadow на слой, поэтому плагин сам раскладывает звёзды по точкам по 8 штук.
@@ -8,7 +8,7 @@ Figma позволяет максимум 8 Drop shadow на слой, поэт�
 1. Скачай папку `figma-star-sky` (`manifest.json`, `code.js`, `ui.html`).
 2. Открой **Figma desktop** (в браузере dev-плагины не ставятся).
 3. **Plugins → Development → Import plugin from manifest…** → выбери `manifest.json`.
-4. Запуск: **Plugins → Development → Starry Sky Plugin**.
+4. Запуск: **Plugins → Development → Sky Stars**.
 
 ## Как пользоваться
 
