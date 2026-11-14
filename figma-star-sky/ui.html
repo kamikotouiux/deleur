@@ -9,6 +9,10 @@
   .sel { padding: 8px 10px; border-radius: 6px; background: var(--figma-color-bg-secondary, #f5f5f5); margin-bottom: 10px; }
   .sel.bad { color: var(--figma-color-text-danger, #d22); }
   .row { display: flex; gap: 6px; margin-bottom: 10px; }
+  .seg { display: flex; gap: 4px; margin: 2px 0 6px; }
+  .seg button { height: 26px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .seg button.on { border-color: var(--figma-color-border-brand-strong, #0d99ff); background: var(--figma-color-bg-brand-tertiary, #e5f4ff); }
+  .seg svg { fill: currentColor; }
   button {
     flex: 1; height: 28px; border-radius: 6px; cursor: pointer;
     font: 500 11px Inter, system-ui, sans-serif;
@@ -46,6 +50,11 @@
 
 <div class="group">
   <div class="title">Точки</div>
+  <div class="seg" id="shape">
+    <button data-shape="dot"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>Круги</button>
+    <button data-shape="sparkle"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 0Q6 4 10 5Q6 6 5 10Q4 6 0 5Q4 4 5 0Z"/></svg>Искры</button>
+    <button data-shape="mix"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="2"/></svg><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 0Q6 4 10 5Q6 6 5 10Q4 6 0 5Q4 4 5 0Z"/></svg>Микс</button>
+  </div>
   <div id="g-dots"></div>
 </div>
 
@@ -135,6 +144,10 @@
       it.el.value = state[k];
       if (it.fmt) it.val.textContent = it.fmt(state[k]);
     });
+    if (!state.shape) state.shape = 'dot';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-shape]'), function (b) {
+      b.className = b.dataset.shape === state.shape ? 'on' : '';
+    });
     $('clip').checked = !!state.clip;
     askPlan();
   }
@@ -152,6 +165,9 @@
     timer = setTimeout(apply, 120);
   }
 
+  Array.prototype.forEach.call(document.querySelectorAll('[data-shape]'), function (b) {
+    b.addEventListener('click', function () { state.shape = b.dataset.shape; render(); changed(); });
+  });
   $('clip').addEventListener('change', function () { state.clip = this.checked; changed(); });
   $('gen').addEventListener('click', apply);
   $('shuffle').addEventListener('click', function () { seed = newSeed(); apply(); });
@@ -182,7 +198,7 @@
       if (!m.layers) return;
       var L = m.layers, sum = L[0].count + L[1].count + L[2].count;
       $('plan').textContent = '≈ ' + sum + ' звёзд: ' +
-        L.filter(function (l) { return l.count > 0; }).map(function (l) { return l.count + '×' + l.size + 'px' + (l.blur ? ' b' + l.blur : ''); }).join(' · ');
+        L.filter(function (l) { return l.count > 0; }).map(function (l) { return l.count + (l.shape === 'sparkle' ? '✦' : '×') + l.size + 'px' + (l.blur ? ' b' + l.blur : ''); }).join(' · ');
     } else if (m.type === 'status') {
       $('status').textContent = m.text;
       $('status').className = 'status' + (m.error ? ' err' : '');

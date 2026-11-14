@@ -16,13 +16,13 @@ var LAYER_NAMES = ['far', 'mid', 'near'];
 var PRESETS = {
   // midShare/bigShare — доля средних и крупных (размытых) звёзд, остальное — мелкие резкие.
   // Кнопка: средних нет вовсе — на 44px высоты три размера читаются как «горох».
-  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, midShare: 25, bigShare: 10, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
-  button:  { density: 54, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, midShare: 0,  bigShare: 33, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true,
+  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, midShare: 25, bigShare: 10, shape: 'dot', cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
+  button:  { density: 54, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, midShare: 0,  bigShare: 33, shape: 'dot', cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true,
              alpha: [[0.5, 1], [0.6, 1], [0.7, 1]] },
-  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, midShare: 25, bigShare: 10, cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
+  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, midShare: 25, bigShare: 10, shape: 'dot', cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
 };
 
-figma.showUI(__html__, { width: 320, height: 850, themeColors: true });
+figma.showUI(__html__, { width: 320, height: 885, themeColors: true });
 
 function rng(seed) {
   return function () {
@@ -56,11 +56,47 @@ function plan(s, w, h) {
   var sNear = Math.max(sFar, q(s.size * s.sizeSpread, 0.25));
   var sMid = Math.max(sFar, q((sFar + sNear) / 2, 0.25));
   var b = s.blur;
-  return [
+  var layers = [
     { count: far,  size: sFar,  blur: 0,                         alpha: A[0] },
     { count: mid,  size: sMid,  blur: b >= 2 ? q(b - 1, 0.5) : 0, alpha: A[1] },
     { count: near, size: sNear, blur: b,                         alpha: A[2] }
   ];
+  // Форма: dot — круги, sparkle — четырёхлучевые искры, mix — мелкие круги + искры на средних и крупных
+  var shape = s.shape || 'dot';
+  for (var i = 0; i < layers.length; i++) {
+    var sp = shape === 'sparkle' || (shape === 'mix' && i > 0);
+    layers[i].shape = sp ? 'sparkle' : 'dot';
+    if (sp) layers[i].size = sparkleSize(layers[i].size);
+  }
+  return layers;
+}
+
+// Искра той же «величины», что и круг, должна быть крупнее: у неё тонкие лучи и мало площади.
+// Меньше 3px форма не читается — превращается в точку.
+function sparkleSize(size) { return Math.max(3, q(size * 3, 0.5)); }
+
+// Четырёхлучевая искра с вогнутыми гранями: 4 квадратичные кривые с контрольными точками у центра
+function sparklePath(S) {
+  var c = S / 2, k = S * 0.1;
+  function p(x, y) { return (Math.round(x * 1000) / 1000) + ' ' + (Math.round(y * 1000) / 1000); }
+  return 'M ' + p(c, 0) +
+    ' Q ' + p(c + k, c - k) + ' ' + p(S, c) +
+    ' Q ' + p(c + k, c + k) + ' ' + p(c, S) +
+    ' Q ' + p(c - k, c + k) + ' ' + p(0, c) +
+    ' Q ' + p(c - k, c - k) + ' ' + p(c, 0) + ' Z';
+}
+
+function makeSource(shape, size) {
+  var n;
+  if (shape === 'sparkle') {
+    n = figma.createVector();
+    n.vectorPaths = [{ windingRule: 'NONZERO', data: sparklePath(size) }];
+  } else {
+    n = figma.createEllipse();
+    n.resize(size, size);
+  }
+  n.strokes = []; // у нового вектора бывает обводка по умолчанию — она выдаёт источник в углу
+  return n;
 }
 
 function readSaved(node) {
@@ -163,9 +199,8 @@ function generate(s, seed) {
       });
       if (fx.length === MAX_SHADOWS || i === L.count - 1) {
         idx++;
-        var dot = figma.createEllipse();
-        dot.name = LAYER_NAMES[li] + ' ' + L.size + 'px / ' + idx;
-        dot.resize(L.size, L.size);
+        var dot = makeSource(L.shape, L.size);
+        dot.name = LAYER_NAMES[li] + ' ' + (L.shape === 'sparkle' ? 'sparkle ' : '') + L.size + 'px / ' + idx;
         dot.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.002 }];
         if (L.blur > 0) fx.push({ type: 'LAYER_BLUR', radius: L.blur, visible: true });
         dot.effects = fx;
