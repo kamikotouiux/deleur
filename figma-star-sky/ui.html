@@ -52,8 +52,8 @@
   <div class="title">Точки</div>
   <div class="seg" id="shape">
     <button data-shape="dot"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>Круги</button>
-    <button data-shape="sparkle"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 0Q6 4 10 5Q6 6 5 10Q4 6 0 5Q4 4 5 0Z"/></svg>Искры</button>
-    <button data-shape="mix"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="2"/></svg><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 0Q6 4 10 5Q6 6 5 10Q4 6 0 5Q4 4 5 0Z"/></svg>Микс</button>
+    <button data-shape="sparkle"><svg width="10" height="10" viewBox="0 0 10 10"><path class="spk" d="M5 0Q6 4 10 5Q6 6 5 10Q4 6 0 5Q4 4 5 0Z"/></svg>Искры</button>
+    <button data-shape="mix"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="2"/></svg><svg width="10" height="10" viewBox="0 0 10 10"><path class="spk" d="M5 0Q6 4 10 5Q6 6 5 10Q4 6 0 5Q4 4 5 0Z"/></svg>Микс</button>
   </div>
   <div id="g-dots"></div>
 </div>
@@ -89,7 +89,8 @@
       ['size', 'Размер', 0.5, 3, 0.25, function (x) { return x + 'px'; }, 'Самые мелкие, дальние звёзды'],
       ['sizeSpread', 'Разброс размера', 1, 5, 0.25, function (x) { return '×' + x; }, '×1 — все одинаковые, ×3 — ближние втрое крупнее'],
       ['bigShare', 'Доля крупных', 0, 50, 1, function (x) { return x + '%'; }, 'Сколько звёзд крупные и размытые. Кнопка 33%, секция 10%'],
-      ['blur', 'Размытие', 0, 4, 0.5, function (x) { return x; }, 'Layer blur ближних. От 2 размываются и средние']
+      ['blur', 'Размытие', 0, 4, 0.5, function (x) { return x; }, 'Layer blur ближних. От 2 размываются и средние'],
+      ['sparkleCurve', 'Выпуклость искры', 2, 50, 1, function (x) { return x + '%'; }, '2% — иглы, 10% — как Telegram, 25% — ромб, выше — выпуклая']
     ],
     'g-place': [
       ['cluster', 'Кучность', 0, 100, 1, function (x) { return x + '%'; }, '0 — равномерно, выше — скопления полосой'],
@@ -135,6 +136,16 @@
     });
   }
 
+  // та же формула, что в code.js, — превью формы прямо в кнопке «Искры»
+  function sparkleD(S, curve) {
+    var t = Math.min(50, Math.max(0, curve)) / 100, c = S / 2, k = S * t;
+    return 'M' + c + ' 0Q' + (c + k) + ' ' + (c - k) + ' ' + S + ' ' + c + 'Q' + (c + k) + ' ' + (c + k) + ' ' + c + ' ' + S +
+      'Q' + (c - k) + ' ' + (c + k) + ' 0 ' + c + 'Q' + (c - k) + ' ' + (c - k) + ' ' + c + ' 0Z';
+  }
+  function drawSparkle() {
+    Array.prototype.forEach.call(document.querySelectorAll('.spk'), function (el) { el.setAttribute('d', sparkleD(10, state.sparkleCurve)); });
+  }
+
   function render() {
     // настройки, сохранённые прошлой версией плагина, без новых полей
     if (state.bigShare == null) state.bigShare = 10;
@@ -145,6 +156,11 @@
       if (it.fmt) it.val.textContent = it.fmt(state[k]);
     });
     if (!state.shape) state.shape = 'dot';
+    if (state.sparkleCurve == null) state.sparkleCurve = 10;
+    // ползунок выпуклости нужен только когда есть искры
+    var sc = inputs.sparkleCurve.el.parentNode;
+    sc.style.display = sc.nextSibling.style.display = state.shape === 'dot' ? 'none' : '';
+    drawSparkle();
     Array.prototype.forEach.call(document.querySelectorAll('[data-shape]'), function (b) {
       b.className = b.dataset.shape === state.shape ? 'on' : '';
     });
@@ -159,6 +175,7 @@
   function apply() { if (selOk) { post({ type: 'apply', settings: state, seed: seed }); active = true; } }
   function changed() {
     touched = true;
+    drawSparkle();
     askPlan();
     if (!$('live').checked || !active || !selOk) return;
     clearTimeout(timer);

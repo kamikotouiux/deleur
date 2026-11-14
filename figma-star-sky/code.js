@@ -1,4 +1,4 @@
-// Starry Sky 2 — звёздное небо из Drop shadow.
+// Starry Sky Plugin — звёздное небо из Drop shadow.
 // Звезда = тень почти невидимой точки (fill 0.2%). Figma даёт максимум 8 Drop shadow на слой,
 // поэтому звёзды раскладываются по точкам по 8 штук.
 //
@@ -16,13 +16,13 @@ var LAYER_NAMES = ['far', 'mid', 'near'];
 var PRESETS = {
   // midShare/bigShare — доля средних и крупных (размытых) звёзд, остальное — мелкие резкие.
   // Кнопка: средних нет вовсе — на 44px высоты три размера читаются как «горох».
-  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, midShare: 25, bigShare: 10, shape: 'dot', cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
-  button:  { density: 54, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, midShare: 0,  bigShare: 33, shape: 'dot', cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true,
+  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, midShare: 25, bigShare: 10, shape: 'dot', sparkleCurve: 10, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
+  button:  { density: 54, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, midShare: 0,  bigShare: 33, shape: 'dot', sparkleCurve: 10, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true,
              alpha: [[0.5, 1], [0.6, 1], [0.7, 1]] },
-  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, midShare: 25, bigShare: 10, shape: 'dot', cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
+  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, midShare: 25, bigShare: 10, shape: 'dot', sparkleCurve: 10, cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
 };
 
-figma.showUI(__html__, { width: 320, height: 885, themeColors: true });
+figma.showUI(__html__, { width: 320, height: 930, themeColors: true });
 
 function rng(seed) {
   return function () {
@@ -75,9 +75,12 @@ function plan(s, w, h) {
 // Меньше 3px форма не читается — превращается в точку.
 function sparkleSize(size) { return Math.max(3, q(size * 3, 0.5)); }
 
-// Четырёхлучевая искра с вогнутыми гранями: 4 квадратичные кривые с контрольными точками у центра
-function sparklePath(S) {
-  var c = S / 2, k = S * 0.1;
+// Четырёхлучевая искра: 4 квадратичные кривые между кончиками лучей.
+// curve — выпуклость в % от размера: контрольная точка уходит от центра к углу.
+// 2% — тонкие иглы, 10% — как у Telegram, 25% — ровный ромб (контрольная точка на прямой), выше — выпуклые грани.
+function sparklePath(S, curve) {
+  var t = Math.min(50, Math.max(0, curve == null ? 10 : curve)) / 100;
+  var c = S / 2, k = S * t;
   function p(x, y) { return (Math.round(x * 1000) / 1000) + ' ' + (Math.round(y * 1000) / 1000); }
   return 'M ' + p(c, 0) +
     ' Q ' + p(c + k, c - k) + ' ' + p(S, c) +
@@ -86,11 +89,11 @@ function sparklePath(S) {
     ' Q ' + p(c - k, c - k) + ' ' + p(c, 0) + ' Z';
 }
 
-function makeSource(shape, size) {
+function makeSource(shape, size, curve) {
   var n;
   if (shape === 'sparkle') {
     n = figma.createVector();
-    n.vectorPaths = [{ windingRule: 'NONZERO', data: sparklePath(size) }];
+    n.vectorPaths = [{ windingRule: 'NONZERO', data: sparklePath(size, curve) }];
   } else {
     n = figma.createEllipse();
     n.resize(size, size);
@@ -174,6 +177,9 @@ function generate(s, seed) {
     if (L.count <= 0) continue;
     var r = rng(seed + li * 7919);
     var fx = [], idx = 0;
+    // источники стоят за левым верхним краем: десятки слоёв по 0.2% в одной точке иначе дают видимое пятно.
+    // Clip content фрейма их срезает, а смещения теней компенсируют сдвиг.
+    var ox = -(Math.ceil(L.size) + 1);
 
     for (var i = 0; i < L.count; i++) {
       // ровно 7 вызовов r() на звезду: при изменении количества уже стоящие звёзды не прыгают
@@ -195,17 +201,17 @@ function generate(s, seed) {
       fx.push({
         type: 'DROP_SHADOW', visible: true, blendMode: 'NORMAL',
         color: { r: col.r, g: col.g, b: col.b, a: a },
-        offset: { x: x, y: y }, radius: 0, spread: 0, showShadowBehindNode: false
+        offset: { x: x - ox, y: y - ox }, radius: 0, spread: 0, showShadowBehindNode: false
       });
       if (fx.length === MAX_SHADOWS || i === L.count - 1) {
         idx++;
-        var dot = makeSource(L.shape, L.size);
+        var dot = makeSource(L.shape, L.size, s.sparkleCurve);
         dot.name = LAYER_NAMES[li] + ' ' + (L.shape === 'sparkle' ? 'sparkle ' : '') + L.size + 'px / ' + idx;
         dot.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.002 }];
         if (L.blur > 0) fx.push({ type: 'LAYER_BLUR', radius: L.blur, visible: true });
         dot.effects = fx;
         stars.appendChild(dot);
-        dot.x = 0; dot.y = 0;
+        dot.x = ox; dot.y = ox;
         fx = [];
       }
     }
