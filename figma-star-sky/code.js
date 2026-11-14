@@ -22,7 +22,7 @@ var PRESETS = {
   galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, midShare: 25, bigShare: 10, cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
 };
 
-figma.showUI(__html__, { width: 320, height: 830, themeColors: true });
+figma.showUI(__html__, { width: 320, height: 850, themeColors: true });
 
 function rng(seed) {
   return function () {
