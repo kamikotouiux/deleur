@@ -1,0 +1,167 @@
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 12px;
+    font: 11px/1.4 Inter, system-ui, sans-serif;
+    color: var(--figma-color-text, #222);
+    background: var(--figma-color-bg, #fff);
+  }
+  .sel { padding: 8px 10px; border-radius: 6px; background: var(--figma-color-bg-secondary, #f5f5f5); margin-bottom: 10px; }
+  .sel.bad { color: var(--figma-color-text-danger, #d22); }
+  .row { display: flex; gap: 6px; margin-bottom: 10px; }
+  button {
+    flex: 1; height: 28px; border-radius: 6px; cursor: pointer;
+    font: 500 11px Inter, system-ui, sans-serif;
+    border: 1px solid var(--figma-color-border, #ddd);
+    background: var(--figma-color-bg, #fff); color: var(--figma-color-text, #222);
+  }
+  button.primary { background: var(--figma-color-bg-brand, #0d99ff); color: var(--figma-color-text-onbrand, #fff); border-color: transparent; }
+  button:disabled { opacity: .4; cursor: default; }
+  .layer { border: 1px solid var(--figma-color-border, #e5e5e5); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+  .layer.off .ctrl { opacity: .35; pointer-events: none; }
+  .head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; margin-bottom: 4px; }
+  .head label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .head input[type=color] { width: 22px; height: 22px; padding: 2px; border: 1px solid var(--figma-color-border, #ddd); border-radius: 5px; background: none; cursor: pointer; }
+  .ctrl { display: grid; grid-template-columns: 62px 1fr 38px; align-items: center; gap: 6px; height: 22px; }
+  .ctrl span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--figma-color-text-secondary, #777); }
+  input[type=range] { width: 100%; accent-color: var(--figma-color-bg-brand, #0d99ff); }
+  .global { margin-bottom: 10px; }
+  .check { display: flex; align-items: center; gap: 6px; height: 22px; }
+  .status { min-height: 16px; color: var(--figma-color-text-secondary, #777); }
+  .status.err { color: var(--figma-color-text-danger, #d22); }
+  .muted { color: var(--figma-color-text-secondary, #777); }
+</style>
+
+<div id="sel" class="sel bad">Выдели один фрейм</div>
+
+<div class="row">
+  <button data-preset="section">Пресет: секция</button>
+  <button data-preset="button">Пресет: кнопка</button>
+</div>
+
+<div id="layers"></div>
+
+<div class="global">
+  <div class="ctrl"><span>Отступ</span><input id="inset" type="range" min="0" max="40" step="1"><span id="insetV"></span></div>
+  <label class="check"><input id="clip" type="checkbox"> Включить Clip content на фрейме</label>
+  <label class="check"><input id="live" type="checkbox" checked> Обновлять сразу при изменении</label>
+</div>
+
+<div class="row">
+  <button id="gen" class="primary">Сгенерировать</button>
+  <button id="shuffle">Перемешать</button>
+</div>
+<div class="row">
+  <button id="clear">Удалить звёзды</button>
+</div>
+<div id="status" class="status"></div>
+<div class="muted">Звёзды — это Drop shadow точки с заливкой 0.2%. Лимит Figma: 8 теней на слой, плагин сам делит на точки.</div>
+
+<script>
+  var TITLES = ['Дальние', 'Средние', 'Ближние'];
+  var presets = null;
+  var state = null;
+  var seed = newSeed();
+  var selOk = false;
+  var selSize = null;
+  var touched = false; // пользователь уже крутил настройки — не перезаписываем их при смене выделения
+  var active = false; // звёзды уже есть на выделенном фрейме → живое обновление
+  var timer = null;
+
+  function newSeed() { return Math.floor(Math.random() * 1e9); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function $(id) { return document.getElementById(id); }
+  function post(m) { parent.postMessage({ pluginMessage: m }, '*'); }
+
+  function slider(label, value, min, max, step, fmt, onInput) {
+    var row = document.createElement('div');
+    row.className = 'ctrl';
+    var l = document.createElement('span'); l.textContent = label;
+    var r = document.createElement('input');
+    r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = value;
+    var v = document.createElement('span'); v.textContent = fmt(value);
+    r.addEventListener('input', function () { var x = Number(r.value); v.textContent = fmt(x); onInput(x); });
+    row.appendChild(l); row.appendChild(r); row.appendChild(v);
+    return row;
+  }
+
+  function render() {
+    var box = $('layers');
+    box.innerHTML = '';
+    state.layers.forEach(function (L, i) {
+      var el = document.createElement('div');
+      el.className = 'layer' + (L.on ? '' : ' off');
+
+      var head = document.createElement('div'); head.className = 'head';
+      var lab = document.createElement('label');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = L.on;
+      cb.addEventListener('change', function () { L.on = cb.checked; el.className = 'layer' + (L.on ? '' : ' off'); changed(); });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(TITLES[i]));
+      var col = document.createElement('input'); col.type = 'color'; col.value = L.color;
+      col.addEventListener('input', function () { L.color = col.value; changed(); });
+      head.appendChild(lab); head.appendChild(col);
+      el.appendChild(head);
+
+      el.appendChild(slider('Звёзд', L.count, 0, 400, 1, function (x) { return x; }, function (x) { L.count = x; changed(); }));
+      el.appendChild(slider('Размер', L.size, 0.5, 6, 0.5, function (x) { return x + 'px'; }, function (x) { L.size = x; changed(); }));
+      el.appendChild(slider('Яркость от', L.aMin, 0, 100, 1, function (x) { return x + '%'; }, function (x) { L.aMin = x; changed(); }));
+      el.appendChild(slider('Яркость до', L.aMax, 0, 100, 1, function (x) { return x + '%'; }, function (x) { L.aMax = x; changed(); }));
+      el.appendChild(slider('Blur', L.blur, 0, 4, 0.5, function (x) { return x; }, function (x) { L.blur = x; changed(); }));
+      box.appendChild(el);
+    });
+    $('inset').value = state.inset; $('insetV').textContent = state.inset + 'px';
+    $('clip').checked = !!state.clip;
+  }
+
+  function loadPreset(name) {
+    var p = clone(presets[name]);
+    // подгоняем количество звёзд под площадь фрейма, чтобы плотность была как в образце
+    if (selSize && p.base) {
+      var k = (selSize[0] * selSize[1]) / (p.base[0] * p.base[1]);
+      p.layers.forEach(function (L) { L.count = Math.min(400, Math.max(4, Math.round(L.count * k))); });
+    }
+    state = p; touched = false; render();
+  }
+
+  function apply() { if (selOk) { post({ type: 'apply', settings: state, seed: seed }); active = true; } }
+  function changed() {
+    touched = true;
+    if (!$('live').checked || !active || !selOk) return;
+    clearTimeout(timer);
+    timer = setTimeout(apply, 150);
+  }
+
+  $('inset').addEventListener('input', function () { state.inset = Number(this.value); $('insetV').textContent = state.inset + 'px'; changed(); });
+  $('clip').addEventListener('change', function () { state.clip = this.checked; changed(); });
+  $('gen').addEventListener('click', apply);
+  $('shuffle').addEventListener('click', function () { seed = newSeed(); apply(); });
+  $('clear').addEventListener('click', function () { post({ type: 'clear' }); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function (b) {
+    b.addEventListener('click', function () { loadPreset(b.dataset.preset); changed(); });
+  });
+
+  window.onmessage = function (e) {
+    var m = e.data.pluginMessage;
+    if (!m) return;
+    if (m.type === 'presets') {
+      presets = m.presets;
+      if (!state) loadPreset('section');
+    } else if (m.type === 'selection') {
+      selOk = m.ok;
+      selSize = m.ok ? [m.w, m.h] : null;
+      $('sel').textContent = m.text;
+      $('sel').className = 'sel' + (m.ok ? '' : ' bad');
+      ['gen', 'shuffle', 'clear'].forEach(function (id) { $(id).disabled = !m.ok; });
+      if (m.saved) { state = m.saved.settings; seed = m.saved.seed; active = true; touched = false; render(); }
+      else {
+        active = false;
+        if (m.ok && presets && !touched) loadPreset(selSize[0] < 400 && selSize[1] < 200 ? 'button' : 'section');
+      }
+    } else if (m.type === 'status') {
+      $('status').textContent = m.text;
+      $('status').className = 'status' + (m.error ? ' err' : '');
+    }
+  };
+
+  post({ type: 'init' });
+</script>
