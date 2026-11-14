@@ -1,34 +1,26 @@
 // Star Sky — звёздное небо из Drop shadow.
-// Каждая звезда = тень одной почти невидимой точки. Figma даёт максимум 8 Drop shadow на слой,
-// поэтому N звёзд = ceil(N / 8) точек по 8 теней.
+// Звезда = тень почти невидимой точки (fill 0.2%). Figma даёт максимум 8 Drop shadow на слой,
+// поэтому звёзды раскладываются по точкам по 8 штук.
+//
+// Главное правило баланса: количество звёзд растёт как sqrt(площади), а не как площадь.
+// Иначе маленькая кнопка с тем же числом звёзд, что и секция, выходит перенасыщенной,
+// а большая секция — пустой. Образцы: секция 1440×760 ≈ 248 звёзд, кнопка 180×44 ≈ 24.
 
 var KEY = 'starsky';
+var VERSION = 2;
 var MAX_SHADOWS = 8;
-
-// base — под какой размер подобраны количества; UI пересчитывает их по площади выделенного фрейма
-var PRESETS = {
-  section: {
-    base: [1440, 760],
-    inset: 0, clip: true,
-    layers: [
-      { on: true, count: 160, size: 1,   aMin: 35, aMax: 80,  blur: 0, color: '#FFFFFF' },
-      { on: true, count: 64,  size: 2,   aMin: 60, aMax: 100, blur: 0, color: '#FFFFFF' },
-      { on: true, count: 24,  size: 3,   aMin: 85, aMax: 100, blur: 1, color: '#FFFFFF' }
-    ]
-  },
-  button: {
-    base: [180, 44],
-    inset: 6, clip: true,
-    layers: [
-      { on: true,  count: 16, size: 1,   aMin: 50, aMax: 100, blur: 0, color: '#FFFFFF' },
-      { on: true,  count: 8,  size: 1.5, aMin: 70, aMax: 100, blur: 1, color: '#FFFFFF' },
-      { on: false, count: 8,  size: 2,   aMin: 80, aMax: 100, blur: 1, color: '#FFFFFF' }
-    ]
-  }
-};
+var DENSITY_K = 0.5;           // насыщенность 50% → 0.25 * sqrt(w*h)
+var SPLIT = [0.65, 0.25, 0.10]; // дальние / средние / ближние
+var ALPHA = [[0.35, 0.8], [0.6, 1], [0.85, 1]];
 var LAYER_NAMES = ['far', 'mid', 'near'];
 
-figma.showUI(__html__, { width: 320, height: 800, themeColors: true });
+var PRESETS = {
+  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
+  button:  { density: 50, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, cluster: 0,  inset: 6, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
+  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
+};
+
+figma.showUI(__html__, { width: 320, height: 790, themeColors: true });
 
 function rng(seed) {
   return function () {
@@ -47,14 +39,33 @@ function hexToRgb(hex) {
   return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
 }
 
+function q(x, step) { return Math.round(x / step) * step; }
+
+// Сколько звёзд и каких получится — общая функция для генерации и подсказки в UI
+function plan(s, w, h) {
+  var total = Math.round((s.density / 100) * DENSITY_K * Math.sqrt(w * h));
+  var far = Math.round(total * SPLIT[0]);
+  var mid = Math.round(total * SPLIT[1]);
+  var near = Math.max(0, total - far - mid);
+  var sFar = s.size;
+  var sNear = Math.max(sFar, q(s.size * s.sizeSpread, 0.25));
+  var sMid = Math.max(sFar, q((sFar + sNear) / 2, 0.25));
+  var b = s.blur;
+  return [
+    { count: far,  size: sFar,  blur: 0,                         alpha: ALPHA[0] },
+    { count: mid,  size: sMid,  blur: b >= 2 ? q(b - 1, 0.5) : 0, alpha: ALPHA[1] },
+    { count: near, size: sNear, blur: b,                         alpha: ALPHA[2] }
+  ];
+}
+
 function readSaved(node) {
   try {
     var raw = node.getPluginData(KEY);
-    return raw ? JSON.parse(raw) : null;
+    var d = raw ? JSON.parse(raw) : null;
+    return d && d.v === VERSION ? d : null;
   } catch (e) { return null; }
 }
 
-// Находит контейнер и уже сгенерированный слой звёзд (если есть)
 function resolveTarget() {
   var sel = figma.currentPage.selection;
   if (sel.length !== 1) return { error: 'Выдели один фрейм' };
@@ -65,7 +76,6 @@ function resolveTarget() {
     if (p.getPluginData(KEY)) return { container: p.parent, stars: p };
     p = p.parent;
   }
-
   if (node.type === 'INSTANCE') return { error: 'Это Instance. Открой главный компонент и выдели его' };
   if (node.type !== 'FRAME' && node.type !== 'COMPONENT') return { error: 'Нужен Frame или Component (сейчас: ' + node.type + ')' };
 
@@ -76,7 +86,7 @@ function resolveTarget() {
   return { container: node, stars: stars };
 }
 
-function generate(settings, seed) {
+function generate(s, seed) {
   var t = resolveTarget();
   if (t.error) return { error: t.error };
   var container = t.container;
@@ -89,70 +99,92 @@ function generate(settings, seed) {
     stars.name = '★ Stars';
     stars.fills = [];
     stars.clipsContent = false;
-    container.insertChild(0, stars); // под контентом, над заливкой фона
+    container.insertChild(0, stars); // над заливкой фона, под контентом
     if ('layoutMode' in container && container.layoutMode !== 'NONE') stars.layoutPositioning = 'ABSOLUTE';
   }
   stars.resize(w, h);
   stars.x = 0; stars.y = 0;
-
   var old = stars.children.slice();
   for (var o = 0; o < old.length; o++) old[o].remove();
 
-  var inset = Math.max(0, Number(settings.inset) || 0);
+  var inset = Math.max(0, Math.min(s.inset, Math.min(w, h) / 2 - 1));
+  var aw = Math.max(1, w - 2 * inset), ah = Math.max(1, h - 2 * inset);
+  var color = hexToRgb(s.color), accent = hexToRgb(s.accent);
+  var bright = s.brightness / 100;
+  var cluster = s.cluster / 100;
+
+  // центры скоплений лежат на одной диагональной полосе — похоже на Млечный путь
+  var cr = rng(seed ^ 0x5bd1e995);
+  var ang = cr() * Math.PI;
+  var centers = [];
+  for (var c = 0; c < 4; c++) {
+    var tt = (c / 3 - 0.5) * 0.8;
+    centers.push({
+      x: w / 2 + Math.cos(ang) * tt * w + (cr() - 0.5) * aw * 0.15,
+      y: h / 2 + Math.sin(ang) * tt * h + (cr() - 0.5) * ah * 0.15
+    });
+  }
+  var sigma = 0.1 * Math.min(aw, ah) + 0.04 * Math.max(aw, ah);
+
+  var layers = plan(s, w, h);
   var total = 0;
-
-  for (var li = 0; li < settings.layers.length; li++) {
-    var L = settings.layers[li];
-    if (!L.on || L.count <= 0) continue;
+  for (var li = 0; li < layers.length; li++) {
+    var L = layers[li];
+    if (L.count <= 0) continue;
     var r = rng(seed + li * 7919);
-    var color = hexToRgb(L.color);
-    var aMin = Math.min(L.aMin, L.aMax) / 100;
-    var aMax = Math.max(L.aMin, L.aMax) / 100;
-    var size = Math.max(0.5, Number(L.size) || 1);
-    var dots = Math.ceil(L.count / MAX_SHADOWS);
+    var fx = [], idx = 0;
 
-    for (var d = 0; d < dots; d++) {
-      var n = Math.min(MAX_SHADOWS, L.count - d * MAX_SHADOWS);
-      var dot = figma.createEllipse();
-      dot.name = LAYER_NAMES[li] + ' ' + size + 'px / ' + (d + 1);
-      dot.resize(size, size);
-      // почти невидимая заливка: источник в (0,0) не видно, а тени рисуются в полную силу
-      dot.fills = [{ type: 'SOLID', color: color, opacity: 0.002 }];
-      var fx = [];
-      for (var s = 0; s < n; s++) {
-        var a = aMin + r() * (aMax - aMin);
-        fx.push({
-          type: 'DROP_SHADOW', visible: true, blendMode: 'NORMAL',
-          color: { r: color.r, g: color.g, b: color.b, a: a },
-          offset: {
-            x: Math.round(inset + r() * Math.max(0, w - 2 * inset - size)),
-            y: Math.round(inset + r() * Math.max(0, h - 2 * inset - size))
-          },
-          radius: 0, spread: 0, showShadowBehindNode: false
-        });
+    for (var i = 0; i < L.count; i++) {
+      // ровно 7 вызовов r() на звезду: при изменении количества уже стоящие звёзды не прыгают
+      var u1 = r(), u2 = r(), u3 = Math.max(r(), 1e-6), u4 = r(), u5 = r(), u6 = r(), u7 = r();
+      var x, y;
+      if (u1 < cluster) {
+        var ce = centers[Math.floor(u2 * centers.length)];
+        var rad = Math.sqrt(-2 * Math.log(u3)) * sigma;
+        x = ce.x + rad * Math.cos(2 * Math.PI * u4);
+        y = ce.y + rad * Math.sin(2 * Math.PI * u4);
+        if (x < inset || x > w - inset - L.size || y < inset || y > h - inset - L.size) { x = inset + u6 * aw; y = inset + u7 * ah; }
+      } else {
+        x = inset + u6 * aw; y = inset + u7 * ah;
       }
-      if (L.blur > 0) fx.push({ type: 'LAYER_BLUR', radius: Number(L.blur), visible: true });
-      dot.effects = fx;
-      stars.appendChild(dot);
-      dot.x = 0; dot.y = 0;
-      total += n;
+      x = Math.round(Math.min(Math.max(x, inset), w - inset - L.size));
+      y = Math.round(Math.min(Math.max(y, inset), h - inset - L.size));
+      var a = Math.min(1, (L.alpha[0] + u5 * (L.alpha[1] - L.alpha[0])) * bright);
+      var col = (u2 * 997 % 1) < s.accentPct / 100 ? accent : color;
+      fx.push({
+        type: 'DROP_SHADOW', visible: true, blendMode: 'NORMAL',
+        color: { r: col.r, g: col.g, b: col.b, a: a },
+        offset: { x: x, y: y }, radius: 0, spread: 0, showShadowBehindNode: false
+      });
+      if (fx.length === MAX_SHADOWS || i === L.count - 1) {
+        idx++;
+        var dot = figma.createEllipse();
+        dot.name = LAYER_NAMES[li] + ' ' + L.size + 'px / ' + idx;
+        dot.resize(L.size, L.size);
+        dot.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.002 }];
+        if (L.blur > 0) fx.push({ type: 'LAYER_BLUR', radius: L.blur, visible: true });
+        dot.effects = fx;
+        stars.appendChild(dot);
+        dot.x = 0; dot.y = 0;
+        fx = [];
+      }
     }
+    total += L.count;
   }
 
-  if (settings.clip) container.clipsContent = true;
-  stars.setPluginData(KEY, JSON.stringify({ settings: settings, seed: seed }));
+  if (s.clip) container.clipsContent = true;
+  stars.setPluginData(KEY, JSON.stringify({ v: VERSION, settings: s, seed: seed }));
   return { total: total, name: container.name };
 }
 
 function sendSelection() {
   var t = resolveTarget();
   if (t.error) { figma.ui.postMessage({ type: 'selection', ok: false, text: t.error }); return; }
-  var saved = t.stars ? readSaved(t.stars) : null;
   figma.ui.postMessage({
     type: 'selection', ok: true,
     text: t.container.name + ' · ' + Math.round(t.container.width) + '×' + Math.round(t.container.height),
     w: t.container.width, h: t.container.height,
-    saved: saved
+    saved: t.stars ? readSaved(t.stars) : null
   });
 }
 
@@ -162,6 +194,8 @@ figma.ui.onmessage = function (msg) {
   if (msg.type === 'init') {
     figma.ui.postMessage({ type: 'presets', presets: PRESETS });
     sendSelection();
+  } else if (msg.type === 'plan') {
+    figma.ui.postMessage({ type: 'plan', layers: plan(msg.settings, msg.w, msg.h) });
   } else if (msg.type === 'apply') {
     try {
       var res = generate(msg.settings, msg.seed);
