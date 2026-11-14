@@ -79,6 +79,7 @@
     'g-dots': [
       ['size', 'Размер', 0.5, 3, 0.25, function (x) { return x + 'px'; }, 'Самые мелкие, дальние звёзды'],
       ['sizeSpread', 'Разброс размера', 1, 5, 0.25, function (x) { return '×' + x; }, '×1 — все одинаковые, ×3 — ближние втрое крупнее'],
+      ['bigShare', 'Доля крупных', 0, 50, 1, function (x) { return x + '%'; }, 'Сколько звёзд крупные и размытые. Кнопка 33%, секция 10%'],
       ['blur', 'Размытие', 0, 4, 0.5, function (x) { return x; }, 'Layer blur ближних. От 2 размываются и средние']
     ],
     'g-place': [
@@ -126,6 +127,9 @@
   }
 
   function render() {
+    // настройки, сохранённые прошлой версией плагина, без новых полей
+    if (state.bigShare == null) state.bigShare = 10;
+    if (state.midShare == null) state.midShare = 25;
     Object.keys(inputs).forEach(function (k) {
       var it = inputs[k];
       it.el.value = state[k];
@@ -178,7 +182,7 @@
       if (!m.layers) return;
       var L = m.layers, sum = L[0].count + L[1].count + L[2].count;
       $('plan').textContent = '≈ ' + sum + ' звёзд: ' +
-        L.map(function (l) { return l.count + '×' + l.size + 'px' + (l.blur ? ' b' + l.blur : ''); }).join(' · ');
+        L.filter(function (l) { return l.count > 0; }).map(function (l) { return l.count + '×' + l.size + 'px' + (l.blur ? ' b' + l.blur : ''); }).join(' · ');
     } else if (m.type === 'status') {
       $('status').textContent = m.text;
       $('status').className = 'status' + (m.error ? ' err' : '');

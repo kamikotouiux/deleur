@@ -10,17 +10,19 @@ var KEY = 'starsky';
 var VERSION = 2;
 var MAX_SHADOWS = 8;
 var DENSITY_K = 0.5;           // насыщенность 50% → 0.25 * sqrt(w*h)
-var SPLIT = [0.65, 0.25, 0.10]; // дальние / средние / ближние
-var ALPHA = [[0.35, 0.8], [0.6, 1], [0.85, 1]];
+var ALPHA = [[0.35, 0.8], [0.6, 1], [0.85, 1]]; // дальние / средние / ближние
 var LAYER_NAMES = ['far', 'mid', 'near'];
 
 var PRESETS = {
-  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
-  button:  { density: 50, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, cluster: 0,  inset: 6, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
-  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
+  // midShare/bigShare — доля средних и крупных (размытых) звёзд, остальное — мелкие резкие.
+  // Кнопка: средних нет вовсе — на 44px высоты три размера читаются как «горох».
+  section: { density: 50, brightness: 100, size: 1, sizeSpread: 3,   blur: 1, midShare: 25, bigShare: 10, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true },
+  button:  { density: 54, brightness: 100, size: 1, sizeSpread: 1.5, blur: 1, midShare: 0,  bigShare: 33, cluster: 0,  inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 0,  clip: true,
+             alpha: [[0.5, 1], [0.6, 1], [0.7, 1]] },
+  galaxy:  { density: 70, brightness: 90,  size: 1, sizeSpread: 2.5, blur: 1, midShare: 25, bigShare: 10, cluster: 65, inset: 0, color: '#FFFFFF', accent: '#B9A4FF', accentPct: 30, clip: true }
 };
 
-figma.showUI(__html__, { width: 320, height: 790, themeColors: true });
+figma.showUI(__html__, { width: 320, height: 830, themeColors: true });
 
 function rng(seed) {
   return function () {
@@ -44,17 +46,20 @@ function q(x, step) { return Math.round(x / step) * step; }
 // Сколько звёзд и каких получится — общая функция для генерации и подсказки в UI
 function plan(s, w, h) {
   var total = Math.round((s.density / 100) * DENSITY_K * Math.sqrt(w * h));
-  var far = Math.round(total * SPLIT[0]);
-  var mid = Math.round(total * SPLIT[1]);
-  var near = Math.max(0, total - far - mid);
+  var midShare = s.midShare == null ? 25 : s.midShare;
+  var bigShare = s.bigShare == null ? 10 : s.bigShare;
+  var near = Math.round(total * bigShare / 100);
+  var mid = Math.min(total - near, Math.round(total * midShare / 100));
+  var far = Math.max(0, total - near - mid);
+  var A = s.alpha || ALPHA;
   var sFar = s.size;
   var sNear = Math.max(sFar, q(s.size * s.sizeSpread, 0.25));
   var sMid = Math.max(sFar, q((sFar + sNear) / 2, 0.25));
   var b = s.blur;
   return [
-    { count: far,  size: sFar,  blur: 0,                         alpha: ALPHA[0] },
-    { count: mid,  size: sMid,  blur: b >= 2 ? q(b - 1, 0.5) : 0, alpha: ALPHA[1] },
-    { count: near, size: sNear, blur: b,                         alpha: ALPHA[2] }
+    { count: far,  size: sFar,  blur: 0,                         alpha: A[0] },
+    { count: mid,  size: sMid,  blur: b >= 2 ? q(b - 1, 0.5) : 0, alpha: A[1] },
+    { count: near, size: sNear, blur: b,                         alpha: A[2] }
   ];
 }
 
