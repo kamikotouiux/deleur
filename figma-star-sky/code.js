@@ -170,52 +170,99 @@ function generate(s, seed) {
   }
   var sigma = 0.1 * Math.min(aw, ah) + 0.04 * Math.max(aw, ah);
 
+  // Скругление фрейма: звёзды не ставим в углы, которые срежет corner radius
+  var R = typeof container.cornerRadius === 'number' ? container.cornerRadius
+        : Math.max(container.topLeftRadius || 0, container.topRightRadius || 0, container.bottomLeftRadius || 0, container.bottomRightRadius || 0);
+  function inside(cx, cy, m) {
+    var x0 = inset + m, y0 = inset + m, x1 = w - inset - m, y1 = h - inset - m;
+    if (cx < x0 || cx > x1 || cy < y0 || cy > y1) return false;
+    var rr = Math.max(0, R - inset - m);
+    if (rr <= 0) return true;
+    var qx = cx < x0 + rr ? x0 + rr : (cx > x1 - rr ? x1 - rr : cx);
+    var qy = cy < y0 + rr ? y0 + rr : (cy > y1 - rr ? y1 - rr : cy);
+    var dx = cx - qx, dy = cy - qy;
+    return dx * dx + dy * dy <= rr * rr;
+  }
+
+  // Раскладка «лучший из кандидатов» (Mitchell): для каждой звезды пробуем K случайных мест и берём то,
+  // что дальше всего от уже поставленных. Чистый random на маленьком числе звёзд почти всегда даёт кучки и дыры.
+  // Сначала ставим крупные — они расходятся друг от друга, потом мелкие заполняют промежутки.
+  // Расстояние делим на сумму радиусов, поэтому вокруг крупной звезды остаётся больше воздуха.
   var layers = plan(s, w, h);
+  var placed = [];
+  var shadows = [[], [], []];
+  var order = [2, 1, 0];
   var total = 0;
-  for (var li = 0; li < layers.length; li++) {
+  for (var oi = 0; oi < order.length; oi++) {
+    var li = order[oi];
     var L = layers[li];
     if (L.count <= 0) continue;
     var r = rng(seed + li * 7919);
-    var fx = [], idx = 0;
-    // источники стоят за левым верхним краем: десятки слоёв по 0.2% в одной точке иначе дают видимое пятно.
-    // Clip content фрейма их срезает, а смещения теней компенсируют сдвиг.
-    var ox = -(Math.ceil(L.size) + 1);
+    var K = li === 0 ? 8 : 16;
+    var half = L.size / 2;
+    var rad = Math.max(L.size, 2);
 
     for (var i = 0; i < L.count; i++) {
-      // ровно 7 вызовов r() на звезду: при изменении количества уже стоящие звёзды не прыгают
-      var u1 = r(), u2 = r(), u3 = Math.max(r(), 1e-6), u4 = r(), u5 = r(), u6 = r(), u7 = r();
-      var x, y;
+      // фиксированное число вызовов r() на звезду: при изменении количества уже стоящие звёзды не прыгают
+      var u1 = r(), u2 = r(), u3 = Math.max(r(), 1e-6), u4 = r(), u5 = r(), u8 = r();
+      var cand = [];
+      for (var k = 0; k < K; k++) cand.push([r(), r()]);
+      var cx, cy, ok = false;
+
       if (u1 < cluster) {
         var ce = centers[Math.floor(u2 * centers.length)];
-        var rad = Math.sqrt(-2 * Math.log(u3)) * sigma;
-        x = ce.x + rad * Math.cos(2 * Math.PI * u4);
-        y = ce.y + rad * Math.sin(2 * Math.PI * u4);
-        if (x < inset || x > w - inset - L.size || y < inset || y > h - inset - L.size) { x = inset + u6 * aw; y = inset + u7 * ah; }
-      } else {
-        x = inset + u6 * aw; y = inset + u7 * ah;
+        var gr = Math.sqrt(-2 * Math.log(u3)) * sigma;
+        cx = ce.x + gr * Math.cos(2 * Math.PI * u4);
+        cy = ce.y + gr * Math.sin(2 * Math.PI * u4);
+        ok = inside(cx, cy, half);
       }
-      x = Math.round(Math.min(Math.max(x, inset), w - inset - L.size));
-      y = Math.round(Math.min(Math.max(y, inset), h - inset - L.size));
+      if (!ok) {
+        var best = -1, bx = 0, by = 0;
+        for (var k2 = 0; k2 < K; k2++) {
+          var px = inset + half + cand[k2][0] * Math.max(0, aw - L.size);
+          var py = inset + half + cand[k2][1] * Math.max(0, ah - L.size);
+          if (!inside(px, py, half)) continue;
+          var score = 1e9;
+          for (var j = 0; j < placed.length; j++) {
+            var P = placed[j], ddx = px - P.x, ddy = py - P.y;
+            var d = Math.sqrt(ddx * ddx + ddy * ddy) / (rad + P.r);
+            if (d < score) score = d;
+          }
+          if (score > best) { best = score; bx = px; by = py; }
+        }
+        if (best < 0) { bx = w / 2; by = h / 2; } // все кандидаты вне формы — крайний случай для крошечных фреймов
+        cx = bx; cy = by;
+      }
+      placed.push({ x: cx, y: cy, r: rad });
+
       var a = Math.min(1, (L.alpha[0] + u5 * (L.alpha[1] - L.alpha[0])) * bright);
-      var col = (u2 * 997 % 1) < s.accentPct / 100 ? accent : color;
-      fx.push({
-        type: 'DROP_SHADOW', visible: true, blendMode: 'NORMAL',
-        color: { r: col.r, g: col.g, b: col.b, a: a },
-        offset: { x: x - ox, y: y - ox }, radius: 0, spread: 0, showShadowBehindNode: false
-      });
-      if (fx.length === MAX_SHADOWS || i === L.count - 1) {
-        idx++;
-        var dot = makeSource(L.shape, L.size, s.sparkleCurve);
-        dot.name = LAYER_NAMES[li] + ' ' + (L.shape === 'sparkle' ? 'sparkle ' : '') + L.size + 'px / ' + idx;
-        dot.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.002 }];
-        if (L.blur > 0) fx.push({ type: 'LAYER_BLUR', radius: L.blur, visible: true });
-        dot.effects = fx;
-        stars.appendChild(dot);
-        dot.x = ox; dot.y = ox;
-        fx = [];
-      }
+      var col = u8 < s.accentPct / 100 ? accent : color;
+      shadows[li].push({ x: Math.round(cx - half), y: Math.round(cy - half), a: a, col: col });
     }
     total += L.count;
+  }
+
+  // Источники стоят за левым верхним краем: десятки слоёв по 0.2% в одной точке иначе дают видимое пятно.
+  // Clip content фрейма их срезает, а смещения теней компенсируют сдвиг.
+  for (var li2 = 0; li2 < layers.length; li2++) {
+    var L2 = layers[li2], list = shadows[li2];
+    var ox = -(Math.ceil(L2.size) + 1);
+    for (var g = 0, idx = 1; g < list.length; g += MAX_SHADOWS, idx++) {
+      var fx = list.slice(g, g + MAX_SHADOWS).map(function (st) {
+        return {
+          type: 'DROP_SHADOW', visible: true, blendMode: 'NORMAL',
+          color: { r: st.col.r, g: st.col.g, b: st.col.b, a: st.a },
+          offset: { x: st.x - ox, y: st.y - ox }, radius: 0, spread: 0, showShadowBehindNode: false
+        };
+      });
+      if (L2.blur > 0) fx.push({ type: 'LAYER_BLUR', radius: L2.blur, visible: true });
+      var dot = makeSource(L2.shape, L2.size, s.sparkleCurve);
+      dot.name = LAYER_NAMES[li2] + ' ' + (L2.shape === 'sparkle' ? 'sparkle ' : '') + L2.size + 'px / ' + idx;
+      dot.fills = [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 }, opacity: 0.002 }];
+      dot.effects = fx;
+      stars.appendChild(dot);
+      dot.x = ox; dot.y = ox;
+    }
   }
 
   if (s.clip) container.clipsContent = true;
