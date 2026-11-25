@@ -2,6 +2,13 @@
 
 Newest first. One entry per decision: date, what was decided, who decided, why / source.
 
+## 2026-11-25 — Variant B (Screenplay) liked; built as a full site
+- Daniel: Variant B looks great. Hero title was too plain for its size; the reading column looked shifted.
+- Built "Variant B — Screenplay, full site" on the wireframe structure (Frame 1): title page → filmstrip → script pages (scenes 1–9 = intro + 8 selected works, 10 = montage of the other 7), credits (What we can make), three acts (How we get there), cast (founders), dialogue scene (FAQ), contact page, THE END, footer.
+- Hero title now a marked-up draft: all four brief headlines typed, three struck in blue pen, current pick under highlighter, revision asterisks in the margin. Graphic through editing marks, not size.
+- Layout: script sits on centred paper sheets (columns 2–9) on the desk background, scene numbers inside the sheet margins — centring is explicit.
+- New microcopy for approval: sluglines, parentheticals, act titles, who answers which FAQ question (VAL/DANIEL), "THE END".
+
 ## 2026-11-25 — Daniel's own direction: screenplay / document / receipt style
 - Daniel redesigned the concept himself (Figma file "Deleur-Website", NJMPwknLdDA0kB4KSqZSDT): typewriter document style — Courier Prime 13/18, 18px rows (offset 10), 12 columns (margin 10, gutter 10), line-number column at 20%, highlighter marks (#E7E67F, #E7A97F), selection blue #1E2490, his signature in blue ink #133A92, letter-style hero ("Daniel & Val, / To: Business with a task").
 - Supersedes the Inter/Catalogue system from 13.11 (moodboard file oy9ZPeAaL8VOreTBg5kzWd is now history).
