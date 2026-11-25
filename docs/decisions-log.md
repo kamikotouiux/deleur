@@ -2,6 +2,14 @@
 
 Newest first. One entry per decision: date, what was decided, who decided, why / source.
 
+## 2026-11-25 — Daniel's own direction: screenplay / document / receipt style
+- Daniel redesigned the concept himself (Figma file "Deleur-Website", NJMPwknLdDA0kB4KSqZSDT): typewriter document style — Courier Prime 13/18, 18px rows (offset 10), 12 columns (margin 10, gutter 10), line-number column at 20%, highlighter marks (#E7E67F, #E7A97F), selection blue #1E2490, his signature in blue ink #133A92, letter-style hero ("Daniel & Val, / To: Business with a task").
+- Supersedes the Inter/Catalogue system from 13.11 (moodboard file oy9ZPeAaL8VOreTBg5kzWd is now history).
+- Claude built in that file (section "Claude — Deléur site v1 + variants"): full page v1 on the wireframe structure with real content; Variant B "Screenplay" and Variant C "Receipt / commission form" for the first three sections. All proposals, not approved.
+- Real content only: 15 projects — Daniel: ProxyShard, 1Cpay, Curvo AI, Web3Hub, Mobile AI Chat, CPA Home, Design concepts; Val: Prism, Nexus, Finoqo, Glitching Symphony (concept), KSE, LA Customs, Puma Speedcat, Friez & Burgz. Design Punks (Val's studio) left out to avoid confusion.
+- Metrics from Val's site (2.6×, 3×, 38%, etc.) not used — no unsubstantiated numbers. Case captions are drafts derived from source descriptions.
+- Open: which 8 go into the detailed list; "Made at Design Punks" credit for Val's work; whether Nexus is a real client; reply time; studio email; portraits; wordmark accent ("Deleur" in Daniel's mock vs "Deléur" in project rules); radio list vs dropdown for "How did you hear".
+
 ## 2026-11-13 — Type and grid re-based on measured refs (supersedes the 12/12 grid entry)
 - Measured: Charmer Blink — body 16/20, nav 16 (same as body), mono caps 11.5, display 40/44, margin 16, text anchors at 720 and 1096 (half and ¾). zajno — margin 16, column pitch 237, gutter ≈14, one weight, body fluid ~22.5 at 1440. ProdCo — one size 13.
 - Grid: 12 columns, margin 16, gutter 14 (column 104.5 at 1440). Anchors: columns 1, 7, 10.
